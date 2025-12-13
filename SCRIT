@@ -1,0 +1,201 @@
+function verificarValidadesEEnviarEmail() {
+
+  // ===============================
+  // 1️ACESSO À PLANILHA
+  // ===============================
+
+  // Abre a planilha ativa e a aba atual
+  const planilha = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // Define o limite máximo de linhas (até 1000)
+  const ultimaLinha = Math.min(planilha.getLastRow(), 1000);
+
+
+  // ===============================
+  // DATA DE HOJE
+  // ===============================
+
+  // Cria a data de hoje
+  const hoje = new Date();
+
+  // Remove horas/minutos/segundos para evitar erro de cálculo
+  hoje.setHours(0, 0, 0, 0);
+
+
+  // ===============================
+  // CONTROLE DE EMAILS JÁ ENVIADOS
+  // ===============================
+
+  // Acessa o "armazenamento interno" do Apps Script
+  const propriedades = PropertiesService.getScriptProperties();
+
+
+  // ===============================
+  // DESTINATÁRIOS DO EMAIL
+  // ===============================
+
+  // Lista de emails que vão receber os avisos
+  const destinatarios = [
+    "SEU EMAIL AQUI"
+  ].join(",");
+
+
+  // ===============================
+  // DIAS QUE DISPARAM AVISO
+  // ===============================
+
+  // Apenas esses valores disparam email
+  const diasAviso = [30, 7, 3, 0];
+
+
+  // ===============================
+  // LEITURA LINHA POR LINHA
+  // ===============================
+
+  for (let linha = 2; linha <= ultimaLinha; linha++) {
+
+    // -------------------------------
+    // 6.1 VALIDADE (COLUNA H)
+    // -------------------------------
+
+    const validade = planilha.getRange(linha, 8).getValue();
+
+    // Se a célula não for uma data válida, ignora a linha
+    if (!(validade instanceof Date)) continue;
+
+    // Remove horário da data de validade
+    validade.setHours(0, 0, 0, 0);
+
+
+    // -------------------------------
+    // 6.2 CÁLCULO DOS DIAS RESTANTES
+    // -------------------------------
+
+    // Diferença entre validade e hoje (em milissegundos)
+    const diferencaMs = validade - hoje;
+
+    // Converte milissegundos em dias
+    const diasRestantes = Math.ceil(
+      diferencaMs / (1000 * 60 * 60 * 24)
+    );
+
+
+    // -------------------------------
+    // 6.3 VERIFICA SE DEVE AVISAR
+    // -------------------------------
+
+    // Se não for 30, 7, 3 ou 0 dias, ignora
+    if (!diasAviso.includes(diasRestantes)) continue;
+
+
+    // -------------------------------
+    // 6.4 TRAVA ANTI-ENVIO DUPLICADO
+    // -------------------------------
+
+    // Cria uma chave única por linha e tipo de aviso
+    const chaveEnvio = `linha_${linha}_aviso_${diasRestantes}`;
+
+    // Se já existe, significa que o email já foi enviado
+    if (propriedades.getProperty(chaveEnvio)) continue;
+
+
+    // ===============================
+    // LEITURA DOS DADOS DA LINHA
+    // ===============================
+
+    const secao = planilha.getRange(linha, 2).getValue();        // B
+    const descSecao = planilha.getRange(linha, 3).getValue();   // C
+    const codigo = planilha.getRange(linha, 4).getValue();      // D
+    const ean = planilha.getRange(linha, 5).getValue();         // E
+    const produto = planilha.getRange(linha, 6).getValue();     // F
+    const qtd = planilha.getRange(linha, 7).getValue();         // G
+    const local = planilha.getRange(linha, 9).getValue();       // I
+    const colaborador = planilha.getRange(linha, 10).getValue();// J
+    const custo = planilha.getRange(linha, 11).getValue();      // K
+    const prazo = planilha.getRange(linha, 12).getValue();      // L
+
+
+    // ===============================
+    // FORMATAÇÃO DA DATA (BR)
+    // ===============================
+
+    const validadeBR = Utilities.formatDate(
+      validade,
+      "America/Sao_Paulo",
+      "dd/MM/yyyy"
+    );
+
+
+    // ===============================
+    // DEFINIÇÃO DO TOM DO EMAIL
+    // ===============================
+
+    let assunto = "";
+    let status = "";
+
+    if (diasRestantes === 30) {
+      assunto = "ℹ️ Aviso – Produto com validade em 30 dias";
+      status = "Informamos que o item abaixo possui validade prevista para daqui a <strong>30 dias</strong>.";
+    }
+
+    if (diasRestantes === 7) {
+      assunto = "⚠️ Aviso – Produto com validade próxima (7 dias)";
+      status = "O item abaixo encontra-se a <strong>7 dias</strong> do vencimento.";
+    }
+
+    if (diasRestantes === 3) {
+      assunto = "🚨 URGENTE – Produto com validade próxima (3 dias)";
+      status = "ATENÇÃO: o item abaixo encontra-se a apenas <strong>3 dias</strong> do vencimento.";
+    }
+
+    if (diasRestantes === 0) {
+      assunto = "❌ VENCIMENTO HOJE – Ação imediata necessária";
+      status = "O item abaixo <strong>VENCE HOJE</strong>. Providências imediatas são necessárias.";
+    }
+
+
+    // ===============================
+    // CORPO DO EMAIL (HTML)
+    // ===============================
+
+    const corpoEmail = `
+      <p>Prezados,</p>
+      <p>${status}</p>
+
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+        <tr><th>Seção</th><td>${secao}</td></tr>
+        <tr><th>Descrição da Seção</th><td>${descSecao}</td></tr>
+        <tr><th>Código</th><td>${codigo}</td></tr>
+        <tr><th>EAN / UPC</th><td>${ean}</td></tr>
+        <tr><th>Produto</th><td>${produto}</td></tr>
+        <tr><th>Quantidade</th><td>${qtd}</td></tr>
+        <tr><th>Validade</th><td>${validadeBR}</td></tr>
+        <tr><th>Local</th><td>${local}</td></tr>
+        <tr><th>Colaborador</th><td>${colaborador}</td></tr>
+        <tr><th>Custo (R$)</th><td>${custo}</td></tr>
+        <tr><th>Prazo (dias)</th><td>${prazo}</td></tr>
+      </table>
+
+      <p>Atenciosamente,<br>
+      Sistema de Monitoramento de Validades</p>
+    `;
+
+
+    // ===============================
+    //  ENVIO DO EMAIL
+    // ===============================
+
+    MailApp.sendEmail({
+      to: destinatarios,
+      subject: assunto,
+      htmlBody: corpoEmail
+    });
+
+
+    // ===============================
+    // REGISTRA QUE JÁ FOI ENVIADO
+    // ===============================
+
+    propriedades.setProperty(chaveEnvio, "enviado");
+  }
+}
