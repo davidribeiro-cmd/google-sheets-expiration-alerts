@@ -87,3 +87,71 @@ Para evitar envios duplicados:
   - Linha
   - Tipo de aviso (30, 7, 3 ou 0 dias)
 - Essas informações ficam armazenadas em:
+🔐 Script Properties
+
+➡️ Dessa forma, mesmo que o script seja executado várias vezes no mesmo dia, **o email só é enviado uma única vez** para cada produto e tipo de aviso.
+
+---
+
+## 🔐 Primeira Execução (Muito Importante)
+
+Antes de testar o envio de emails:
+
+1. Abra a planilha no Google Sheets
+2. Vá em **Extensões → Apps Script**
+3. Execute a função principal manualmente
+4. **Autorize as permissões solicitadas pelo Google**
+
+⚠️ Sem essa autorização inicial, o envio de emails não funciona.
+
+---
+
+## 🧪 Como Testar o Sistema
+
+Para realizar testes de forma simples:
+
+- Defina a data de validade como:
+- Hoje + 30 dias
+- Hoje + 7 dias
+- Hoje + 3 dias
+- Hoje
+- Execute o script
+- Verifique se o email é enviado
+- Execute novamente no mesmo dia → o email **não deve ser reenviado**
+
+Você também pode testar múltiplas vezes utilizando **linhas diferentes** da planilha.
+
+---
+
+## ⏱️ Automação com Gatilho
+
+O script foi projetado para funcionar com um **gatilho de tempo**, como por exemplo:
+
+- Execução diária (recomendado)
+- Execução a cada hora (opcional)
+
+Isso garante que os alertas sejam enviados automaticamente sem necessidade de execução manual.
+
+---
+
+## 🚀 Tecnologias Utilizadas
+
+- Google Sheets
+- Google Apps Script
+- HTML para formatação de emails
+- Script Properties para controle de estado dos envios
+
+---
+
+## 📌 Observações Finais
+
+- O código pode ser facilmente adaptado para outras planilhas
+- Os prazos de aviso podem ser alterados conforme a necessidade
+- Ideal para controle de estoque, validade de produtos ou documentos
+
+---
+
+## 🤝 Contribuições
+
+Sugestões, melhorias e adaptações são sempre bem-vindas!
+
