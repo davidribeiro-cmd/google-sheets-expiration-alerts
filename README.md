@@ -55,7 +55,7 @@ O código fica na pasta [`src/`](src), separado por automação:
 
 | Arquivo | Função principal | O que faz |
 |------|-----------|-----------|
-| [`Config.gs`](src/Config.gs) | | Configurações: código da loja, banner, nomes das abas, prazos de aviso |
+| [`Config.gs`](src/Config.gs) | | Configurações: código da loja, banner, prazos de aviso, nomes das abas e colunas do PAINEL |
 | [`Forms.gs`](src/Forms.gs) | `onFormSubmit(e)` | Grava cada resposta do Forms no PAINEL |
 | [`Organizador.gs`](src/Organizador.gs) | `organizarPainel()` | Ordena o PAINEL por data de validade |
 | [`Disparador.gs`](src/Disparador.gs) | `verificarValidadesEEnviarEmail()` | Agrupa os itens por setor e envia os alertas |
@@ -63,6 +63,16 @@ O código fica na pasta [`src/`](src), separado por automação:
 | [`EmailTemplate.html`](src/EmailTemplate.html) | | Layout do e-mail de alerta em HTML e CSS |
 | [`RelatorioPDF.gs`](src/RelatorioPDF.gs) | `gerarRelatorioPDF(setor, itens)` | Gera o relatório completo do setor em PDF |
 | [`Limpeza.gs`](src/Limpeza.gs) | `moverItensVencidosAutomaticamente()` | Move os itens vencidos para o histórico |
+| [`appsscript.json`](src/appsscript.json) | | Manifesto do projeto (fuso horário e runtime V8) |
+
+### Padrões adotados
+
+- **JavaScript moderno (runtime V8)**: `const`/`let`, arrow functions, template strings e desestruturação.
+- **Sem números mágicos**: abas, colunas e linhas do PAINEL ficam nomeadas em `Config.gs` (ex.: `COLUNA.VALIDADE`), então uma mudança na planilha é ajustada em um só lugar.
+- **Funções pequenas e documentadas**: cada função tem uma responsabilidade e comentário JSDoc com parâmetros e retorno.
+- **Leitura em bloco**: os dados da planilha são lidos de uma vez com `getValues()`, o que reduz chamadas à API e o tempo de execução.
+- **Falhas tratadas**: abas ausentes são registradas no log de execução, e a aba temporária do PDF é apagada mesmo se a exportação falhar.
+- **Logs**: cada execução registra quantos e-mails foram enviados e quantos itens foram movidos para o histórico (menu **Execuções** do Apps Script).
 
 ---
 

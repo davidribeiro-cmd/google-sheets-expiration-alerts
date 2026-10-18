@@ -1,217 +1,197 @@
-// =========================================
-// DISPARADOR DE E-MAIL AUTOMÁTICO
-// =========================================
-// Gatilho: por tempo (ex.: todos os dias).
-// Lê o PAINEL, agrupa os itens por setor e envia
-// para o responsável de cada setor (aba
-// CONFIG_EMAILS) um e-mail com os itens críticos
-// no corpo e o relatório completo do setor em PDF
-// anexo. Cada aviso é enviado uma única vez.
+/**
+ * @fileoverview Disparo dos alertas de validade por e-mail.
+ *
+ * Gatilho sugerido: baseado no tempo (diário).
+ * Lê o PAINEL, agrupa os itens por setor e envia ao responsável de cada setor
+ * (aba CONFIG_EMAILS) um e-mail com os itens críticos no corpo e o relatório
+ * completo do setor em PDF anexo. Cada aviso é enviado uma única vez.
+ */
 
+/** Milissegundos em um dia. */
+const MS_POR_DIA = 1000 * 60 * 60 * 24;
+
+/** Texto da coluna STATUS do e-mail para cada prazo de aviso. */
+const TEXTO_STATUS = Object.freeze({
+  0: "🔴 VENCE HOJE",
+  3: "🟠 Vence em 3 dias",
+  7: "🟡 Vence em 7 dias",
+  30: "🔵 Vence em 30 dias"
+});
+
+/**
+ * @typedef {Object} ItemRelatorio
+ * @property {string} codigo
+ * @property {string} produto
+ * @property {number} qtd
+ * @property {string} validade         Data formatada (dd/MM/yyyy).
+ * @property {Date}   validadeOriginal Data usada na ordenação.
+ * @property {string} local
+ */
+
+/**
+ * @typedef {Object} ItemCritico
+ * @property {number} linha
+ * @property {string} chave         Chave do controle anti-envio duplicado.
+ * @property {string} codigo
+ * @property {string} produto
+ * @property {string} ean
+ * @property {string} setor
+ * @property {string} local
+ * @property {string} colaborador
+ * @property {number} qtd
+ * @property {string} validade      Data formatada (dd/MM/yyyy).
+ * @property {number} diasRestantes
+ * @property {string} status        Texto exibido na coluna STATUS.
+ */
+
+/**
+ * Verifica as validades do PAINEL e envia os alertas de cada setor.
+ */
 function verificarValidadesEEnviarEmail() {
-
   const planilha = SpreadsheetApp.getActiveSpreadsheet();
-  const abaPainel = planilha.getSheetByName(ABA_PAINEL);
-  const abaConfig = planilha.getSheetByName(ABA_CONFIG_EMAILS);
+  const abaPainel = planilha.getSheetByName(ABA.PAINEL);
+  const abaConfig = planilha.getSheetByName(ABA.CONFIG_EMAILS);
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  const ultimaLinha = Math.min(abaPainel.getLastRow(), 10000);
-
-  // =========================================
-  // LEITURA OTIMIZADA
-  // =========================================
-  // Lê o PAINEL inteiro de uma vez, em vez de
-  // célula por célula.
-
-  const dadosPainel = abaPainel.getDataRange().getValues();
-
-  const propriedades = PropertiesService.getScriptProperties();
-
-  const mapaEmails = lerEmailsPorSetor(abaConfig);
-
-  // =========================================
-  // AGRUPAMENTO POR SETOR
-  // =========================================
-
-  const agrupadoPorSetor = {};          // itens críticos (corpo do e-mail)
-  const relatorioCompletoPorSetor = {}; // todos os itens (PDF)
-
-  for (let linha = 3; linha <= ultimaLinha; linha++) {
-
-    const dadosLinha = dadosPainel[linha - 1];
-
-    const validade = dadosLinha[7]; // H
-
-    if (!(validade instanceof Date)) continue;
-
-    validade.setHours(0, 0, 0, 0);
-
-    const diasRestantes = Math.ceil(
-      (validade - hoje) / (1000 * 60 * 60 * 24)
-    );
-
-    // Trava anti-envio duplicado: uma chave por
-    // linha e tipo de aviso.
-    const chaveEnvio = "linha_" + linha + "_aviso_" + diasRestantes;
-
-    if (propriedades.getProperty(chaveEnvio)) continue;
-
-    const codigo = dadosLinha[3];       // D
-    const ean = dadosLinha[4];          // E
-    const produto = dadosLinha[5];      // F
-    const qtd = dadosLinha[6];          // G
-    const local = dadosLinha[8];        // I
-    const setor = dadosLinha[9];        // J
-    const colaborador = dadosLinha[10]; // K
-
-    if (!setor) continue;
-
-    const validadeBR = Utilities.formatDate(validade, FUSO_HORARIO, "dd/MM/yyyy");
-
-    // -----------------------------------------
-    // Todos os itens vão para o relatório em PDF
-    // -----------------------------------------
-
-    if (!relatorioCompletoPorSetor[setor]) {
-      relatorioCompletoPorSetor[setor] = [];
-    }
-
-    relatorioCompletoPorSetor[setor].push({
-      codigo: codigo,
-      produto: produto,
-      qtd: qtd,
-      validade: validadeBR,
-      validadeOriginal: validade,
-      local: local
-    });
-
-    // -----------------------------------------
-    // Só os itens em 0, 3, 7 ou 30 dias vão
-    // para o corpo do e-mail
-    // -----------------------------------------
-
-    if (!DIAS_AVISO.includes(diasRestantes)) continue;
-
-    if (!agrupadoPorSetor[setor]) {
-      agrupadoPorSetor[setor] = [];
-    }
-
-    agrupadoPorSetor[setor].push({
-      linha: linha,
-      chave: chaveEnvio,
-      codigo: codigo,
-      produto: produto,
-      ean: ean,
-      setor: setor,
-      local: local,
-      colaborador: colaborador,
-      qtd: qtd,
-      validade: validadeBR,
-      diasRestantes: diasRestantes,
-      status: textoStatus(diasRestantes)
-    });
-
+  if (!abaPainel || !abaConfig) {
+    console.error(`Abas ${ABA.PAINEL} e ${ABA.CONFIG_EMAILS} são obrigatórias.`);
+    return;
   }
 
-  // =========================================
-  // ENVIO POR SETOR
-  // =========================================
+  const propriedades = PropertiesService.getScriptProperties();
+  const emailsPorSetor = lerEmailsPorSetor(abaConfig);
+  const { criticosPorSetor, relatorioPorSetor } = agruparItensPorSetor(abaPainel, propriedades);
 
-  for (let setor in agrupadoPorSetor) {
+  let enviados = 0;
 
-    const itens = agrupadoPorSetor[setor];
-    const destinatarios = mapaEmails[setor.toString().trim()];
+  Object.keys(criticosPorSetor).forEach((setor) => {
+    const destinatarios = emailsPorSetor[setor.toString().trim()];
 
-    if (!destinatarios) continue;
+    if (!destinatarios) {
+      console.warn(`Setor "${setor}" sem e-mail cadastrado em ${ABA.CONFIG_EMAILS}.`);
+      return;
+    }
 
-    // Mais urgente primeiro
-    itens.sort(function (a, b) {
-      return a.diasRestantes - b.diasRestantes;
-    });
-
-    const corpoEmail = montarCorpoEmail(itens);
-
-    const pdfBlob = gerarRelatorioPDF(setor, relatorioCompletoPorSetor[setor]);
+    const itens = criticosPorSetor[setor].sort((a, b) => a.diasRestantes - b.diasRestantes);
 
     MailApp.sendEmail({
       to: destinatarios,
-      subject: "🚨 Relatório Preventivo de Validades | " + setor,
-      htmlBody: corpoEmail,
-      attachments: [pdfBlob]
+      subject: `🚨 Relatório Preventivo de Validades | ${setor}`,
+      htmlBody: montarCorpoEmail(itens),
+      attachments: [gerarRelatorioPDF(setor, relatorioPorSetor[setor])]
     });
 
-    // Marca como enviado
-    itens.forEach(function (item) {
-      propriedades.setProperty(item.chave, "enviado");
-    });
-
-  }
-
-}
-
-// =========================================
-// STATUS DE CADA AVISO
-// =========================================
-// Texto mostrado na coluna STATUS do e-mail.
-// Se um novo prazo for incluído em DIAS_AVISO
-// (Config.gs), ele usa o texto padrão.
-
-function textoStatus(diasRestantes) {
-
-  const textos = {
-    0: "🔴 VENCE HOJE",
-    3: "🟠 Vence em 3 dias",
-    7: "🟡 Vence em 7 dias",
-    30: "🔵 Vence em 30 dias"
-  };
-
-  return textos[diasRestantes] || "Vence em " + diasRestantes + " dias";
-
-}
-
-// =========================================
-// E-MAILS DOS SETORES
-// =========================================
-// Aba CONFIG_EMAILS: coluna A = setor,
-// coluna B = e-mail(s) do responsável.
-// Para mais de um e-mail, separe por vírgula.
-
-function lerEmailsPorSetor(abaConfig) {
-
-  const dadosConfig = abaConfig
-    .getRange(2, 1, abaConfig.getLastRow() - 1, 2)
-    .getValues();
-
-  const mapaEmails = {};
-
-  dadosConfig.forEach(function (linha) {
-
-    const setor = linha[0];
-    const emails = linha[1];
-
-    if (setor && emails) {
-      mapaEmails[setor.toString().trim()] = emails.toString().trim();
-    }
-
+    itens.forEach((item) => propriedades.setProperty(item.chave, "enviado"));
+    enviados++;
   });
 
-  return mapaEmails;
-
+  console.log(`${enviados} e-mail(s) de alerta enviado(s).`);
 }
 
-// =========================================
-// LIMPAR CONTROLE DE ENVIOS
-// =========================================
-// Executar manualmente para apagar o registro de
-// avisos já enviados (útil em testes). Depois
-// disso, os alertas podem ser enviados de novo.
+/**
+ * Lê o PAINEL e separa, por setor, os itens críticos (corpo do e-mail) e
+ * todos os itens (relatório em PDF).
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} abaPainel Aba PAINEL.
+ * @param {GoogleAppsScript.Properties.Properties} propriedades Controle de envios.
+ * @returns {{criticosPorSetor: Object<string, ItemCritico[]>, relatorioPorSetor: Object<string, ItemRelatorio[]>}}
+ */
+function agruparItensPorSetor(abaPainel, propriedades) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
 
+  // Lê o PAINEL inteiro de uma vez, em vez de célula por célula.
+  const dados = abaPainel.getDataRange().getValues();
+  const ultimaLinha = Math.min(abaPainel.getLastRow(), LIMITE_LINHAS);
+
+  const criticosPorSetor = {};
+  const relatorioPorSetor = {};
+
+  for (let linha = PRIMEIRA_LINHA_DADOS; linha <= ultimaLinha; linha++) {
+    const registro = dados[linha - 1];
+    const valor = (coluna) => registro[coluna - 1];
+
+    const validade = valor(COLUNA.VALIDADE);
+    if (!(validade instanceof Date)) continue;
+
+    validade.setHours(0, 0, 0, 0);
+    const diasRestantes = Math.ceil((validade - hoje) / MS_POR_DIA);
+
+    // Controle anti-envio duplicado: uma chave por linha e tipo de aviso.
+    const chave = `linha_${linha}_aviso_${diasRestantes}`;
+    if (propriedades.getProperty(chave)) continue;
+
+    const setor = valor(COLUNA.SETOR);
+    if (!setor) continue;
+
+    const item = {
+      codigo: valor(COLUNA.CODIGO),
+      produto: valor(COLUNA.PRODUTO),
+      qtd: valor(COLUNA.QUANTIDADE),
+      validade: Utilities.formatDate(validade, FUSO_HORARIO, "dd/MM/yyyy"),
+      local: valor(COLUNA.LOCAL)
+    };
+
+    // Todos os itens vão para o relatório em PDF.
+    (relatorioPorSetor[setor] = relatorioPorSetor[setor] || []).push({
+      ...item,
+      validadeOriginal: validade
+    });
+
+    // Só os itens nos prazos de aviso vão para o corpo do e-mail.
+    if (!DIAS_AVISO.includes(diasRestantes)) continue;
+
+    (criticosPorSetor[setor] = criticosPorSetor[setor] || []).push({
+      ...item,
+      linha,
+      chave,
+      ean: valor(COLUNA.EAN),
+      setor,
+      colaborador: valor(COLUNA.COLABORADOR),
+      diasRestantes,
+      status: textoStatus(diasRestantes)
+    });
+  }
+
+  return { criticosPorSetor, relatorioPorSetor };
+}
+
+/**
+ * Texto da coluna STATUS do e-mail. Prazos incluídos em DIAS_AVISO que não
+ * estão em TEXTO_STATUS usam um texto padrão.
+ *
+ * @param {number} diasRestantes Dias até o vencimento.
+ * @returns {string}
+ */
+function textoStatus(diasRestantes) {
+  return TEXTO_STATUS[diasRestantes] || `Vence em ${diasRestantes} dias`;
+}
+
+/**
+ * Lê a aba CONFIG_EMAILS (coluna A = setor, coluna B = e-mails separados por
+ * vírgula).
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} abaConfig Aba CONFIG_EMAILS.
+ * @returns {Object<string, string>} E-mails de cada setor.
+ */
+function lerEmailsPorSetor(abaConfig) {
+  const totalLinhas = abaConfig.getLastRow() - 1;
+  if (totalLinhas < 1) return {};
+
+  return abaConfig
+    .getRange(2, 1, totalLinhas, 2)
+    .getValues()
+    .reduce((mapa, [setor, emails]) => {
+      if (setor && emails) {
+        mapa[setor.toString().trim()] = emails.toString().trim();
+      }
+      return mapa;
+    }, {});
+}
+
+/**
+ * Apaga o registro de avisos já enviados, liberando os alertas para serem
+ * enviados de novo. Executar manualmente (útil em testes).
+ */
 function limparControleEnvios() {
-
-  PropertiesService
-    .getScriptProperties()
-    .deleteAllProperties();
-
+  PropertiesService.getScriptProperties().deleteAllProperties();
 }
