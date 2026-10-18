@@ -46,6 +46,7 @@ function moverItensVencidosAutomaticamente() {
     ]);
 
     abaPainel.deleteRow(linha);
+    apagarControleEnvios(registro);
     removidos++;
   }
 
@@ -54,6 +55,18 @@ function moverItensVencidosAutomaticamente() {
   }
 
   console.log(`${removidos} item(ns) movido(s) para o histórico.`);
+}
+
+/**
+ * Apaga as chaves de "já enviado" de um item removido do PAINEL, para que o
+ * controle de envios não cresça sem limite.
+ *
+ * @param {Array} registro Valores da linha removida (colunas A até N).
+ */
+function apagarControleEnvios(registro) {
+  const propriedades = PropertiesService.getScriptProperties();
+
+  DIAS_AVISO.forEach((dias) => propriedades.deleteProperty(chaveEnvio(registro, dias)));
 }
 
 /**

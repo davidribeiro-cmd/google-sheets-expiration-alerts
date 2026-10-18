@@ -30,7 +30,6 @@ const TEXTO_STATUS = Object.freeze({
 
 /**
  * @typedef {Object} ItemCritico
- * @property {number} linha
  * @property {string} chave         Chave do controle anti-envio duplicado.
  * @property {string} codigo
  * @property {string} produto
@@ -116,10 +115,6 @@ function agruparItensPorSetor(abaPainel, propriedades) {
     validade.setHours(0, 0, 0, 0);
     const diasRestantes = Math.ceil((validade - hoje) / MS_POR_DIA);
 
-    // Controle anti-envio duplicado: uma chave por linha e tipo de aviso.
-    const chave = `linha_${linha}_aviso_${diasRestantes}`;
-    if (propriedades.getProperty(chave)) continue;
-
     const setor = valor(COLUNA.SETOR);
     if (!setor) continue;
 
@@ -137,12 +132,15 @@ function agruparItensPorSetor(abaPainel, propriedades) {
       validadeOriginal: validade
     });
 
-    // Só os itens nos prazos de aviso vão para o corpo do e-mail.
+    // Só os itens nos prazos de aviso, ainda não avisados, vão para o
+    // corpo do e-mail.
     if (!DIAS_AVISO.includes(diasRestantes)) continue;
+
+    const chave = chaveEnvio(registro, diasRestantes);
+    if (propriedades.getProperty(chave)) continue;
 
     (criticosPorSetor[setor] = criticosPorSetor[setor] || []).push({
       ...item,
-      linha,
       chave,
       ean: valor(COLUNA.EAN),
       setor,
@@ -153,6 +151,40 @@ function agruparItensPorSetor(abaPainel, propriedades) {
   }
 
   return { criticosPorSetor, relatorioPorSetor };
+}
+
+/**
+ * Identifica um item do PAINEL de forma estável, mesmo que ele mude de linha
+ * quando o PAINEL é reordenado ou outros itens são removidos. Usa o ID único
+ * (coluna N) e, para itens cadastrados sem ID, a combinação de código,
+ * validade, setor e local.
+ *
+ * @param {Array} registro Valores da linha do PAINEL (colunas A até N).
+ * @returns {string}
+ */
+function identificarItem(registro) {
+  const valor = (coluna) => registro[coluna - 1];
+
+  const id = valor(COLUNA.ID);
+  if (id) return `id_${id}`;
+
+  const validade = valor(COLUNA.VALIDADE);
+  const data = validade instanceof Date
+    ? Utilities.formatDate(validade, FUSO_HORARIO, "yyyy-MM-dd")
+    : String(validade);
+
+  return ["item", valor(COLUNA.CODIGO), data, valor(COLUNA.SETOR), valor(COLUNA.LOCAL)].join("_");
+}
+
+/**
+ * Chave do controle anti-envio duplicado: uma por item e prazo de aviso.
+ *
+ * @param {Array} registro Valores da linha do PAINEL (colunas A até N).
+ * @param {number} diasRestantes Prazo do aviso.
+ * @returns {string}
+ */
+function chaveEnvio(registro, diasRestantes) {
+  return `${identificarItem(registro)}_aviso_${diasRestantes}`;
 }
 
 /**

@@ -138,12 +138,16 @@ Isso facilita a leitura e o acompanhamento pelos responsáveis.
 Para evitar envios duplicados:
 
 - O script salva uma **chave única** por:
-  - Linha
+  - Item (o ID único da coluna N; para itens sem ID, a combinação de código, validade, setor e local)
   - Tipo de aviso (30, 7, 3 ou 0 dias)
 - Essas informações ficam armazenadas em:
 🔐 Script Properties
 
 ➡️ Dessa forma, mesmo que o script seja executado várias vezes no mesmo dia, **o email só é enviado uma única vez** para cada produto e tipo de aviso.
+
+Como a chave é do item, e não da linha, o controle continua certo quando o PAINEL é reordenado ou quando itens são removidos. Quando um item vencido vai para o histórico, as chaves dele também são apagadas, para o controle não crescer sem limite.
+
+O relatório em PDF sempre traz **todos os itens do setor**, inclusive os que já foram avisados antes.
 
 Para apagar esse controle (por exemplo, depois de testes), execute manualmente a função `limparControleEnvios()`.
 
