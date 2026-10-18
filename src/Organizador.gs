@@ -1,31 +1,24 @@
-// =========================================
-// ORGANIZADOR DO PAINEL
-// =========================================
-// Ordena os itens do PAINEL pela data de
-// validade (coluna H), do mais próximo de
-// vencer para o mais distante.
+/**
+ * @fileoverview Organização do PAINEL.
+ *
+ * Gatilho sugerido: baseado no tempo (ex.: a cada hora).
+ */
 
+/**
+ * Ordena os itens do PAINEL pela data de validade, do mais próximo de
+ * vencer para o mais distante.
+ */
 function organizarPainel() {
+  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA.PAINEL);
+  if (!aba) {
+    console.error(`Aba ${ABA.PAINEL} não encontrada.`);
+    return;
+  }
 
-  const planilha = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = planilha.getSheetByName(ABA_PAINEL);
-  const ultimaLinha = aba.getLastRow();
-
-  // Linha 1 = cabeçalho
-  // Linha 2 = fórmulas ocultas
-  // Linha 3 = início dos dados
-
-  if (ultimaLinha < 3) return;
+  const totalLinhas = aba.getLastRow() - PRIMEIRA_LINHA_DADOS + 1;
+  if (totalLinhas < 1) return;
 
   aba
-    .getRange(
-      3,                // começa na linha 3
-      1,                // coluna A
-      ultimaLinha - 2,  // quantidade de linhas com dados
-      14                // até a coluna N
-    )
-    .sort([
-      { column: 8, ascending: true }
-    ]);
-
+    .getRange(PRIMEIRA_LINHA_DADOS, 1, totalLinhas, TOTAL_COLUNAS)
+    .sort([{ column: COLUNA.VALIDADE, ascending: true }]);
 }
