@@ -59,7 +59,8 @@ O código fica na pasta [`src/`](src), separado por automação:
 | [`Forms.gs`](src/Forms.gs) | `onFormSubmit(e)` | Grava cada resposta do Forms no PAINEL |
 | [`Organizador.gs`](src/Organizador.gs) | `organizarPainel()` | Ordena o PAINEL por data de validade |
 | [`Disparador.gs`](src/Disparador.gs) | `verificarValidadesEEnviarEmail()` | Agrupa os itens por setor e envia os alertas |
-| [`Email.gs`](src/Email.gs) | `montarCorpoEmail(itens)` | Monta o e-mail em HTML e CSS |
+| [`Email.gs`](src/Email.gs) | `montarCorpoEmail(itens)` | Preenche o template do e-mail com os itens do setor |
+| [`EmailTemplate.html`](src/EmailTemplate.html) | | Layout do e-mail de alerta em HTML e CSS |
 | [`RelatorioPDF.gs`](src/RelatorioPDF.gs) | `gerarRelatorioPDF(setor, itens)` | Gera o relatório completo do setor em PDF |
 | [`Limpeza.gs`](src/Limpeza.gs) | `moverItensVencidosAutomaticamente()` | Move os itens vencidos para o histórico |
 
@@ -142,7 +143,7 @@ Para apagar esse controle (por exemplo, depois de testes), execute manualmente a
 
 1. Crie a planilha com as 5 abas descritas acima e ligue o Google Forms a ela.
 2. Abra a planilha e vá em **Extensões → Apps Script**.
-3. Crie um arquivo para cada arquivo da pasta `src/` e cole o conteúdo.
+3. Crie um arquivo para cada arquivo da pasta `src/` e cole o conteúdo. Os arquivos `.gs` são do tipo **Script**; o `EmailTemplate.html` é do tipo **HTML** e deve se chamar exatamente `EmailTemplate`.
 4. Em `Config.gs`, ajuste:
    - `CODIGO_LOJA`: código da sua loja;
    - `BANNER_URL`: link público da imagem do banner (se ficar como está, o e-mail sai sem banner);

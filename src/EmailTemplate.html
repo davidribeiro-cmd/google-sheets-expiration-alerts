@@ -1,0 +1,78 @@
+<!--
+  E-MAIL DE ALERTA
+  Template HTML usado por montarCorpoEmail() (Email.gs).
+  O CSS fica inline (atributo style) porque a maioria
+  dos leitores de e-mail ignora a tag <style>.
+
+  Variáveis recebidas:
+    itens        → itens críticos do setor
+    bannerUrl    → link do banner ("" = sem banner)
+    corPrincipal → cor do cabeçalho da tabela
+-->
+<div style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"
+    style="border-collapse:collapse;margin:0;padding:0;background:#f4f6f9;">
+    <tr>
+      <td align="center" style="padding:0;margin:0;">
+
+        <table width="1200" cellpadding="0" cellspacing="0" border="0"
+          style="width:100%;max-width:1200px;border-collapse:collapse;background:white;">
+
+          <? if (bannerUrl) { ?>
+          <!-- BANNER -->
+          <tr>
+            <td style="padding:0;margin:0;line-height:0;font-size:0;">
+              <img src="<?= bannerUrl ?>" width="1200"
+                style="width:100%;max-width:1200px;height:auto;display:block;border:0;margin:0;padding:0;">
+            </td>
+          </tr>
+          <? } ?>
+
+          <!-- CONTEÚDO -->
+          <tr>
+            <td style="padding:35px;">
+
+              <table style="width:100%;border-collapse:collapse;font-size:14px;">
+
+                <tr style="background:<?= corPrincipal ?>;color:white;">
+                  <th style="padding:14px;border:1px solid #dcdcdc;">CÓDIGO</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">PRODUTO</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">EAN</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">SETOR</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">LOCAL</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">COLAB</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">QTD</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">DATA</th>
+                  <th style="padding:14px;border:1px solid #dcdcdc;">STATUS</th>
+                </tr>
+
+                <? itens.forEach(function (item) { ?>
+                <tr>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.codigo ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;"><?= item.produto ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.ean ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.setor ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.local ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.colaborador ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.qtd ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;text-align:center;"><?= item.validade ?></td>
+                  <td style="padding:12px;border:1px solid #dcdcdc;font-weight:bold;text-align:center;"><?= item.status ?></td>
+                </tr>
+                <? }); ?>
+
+              </table>
+
+              <div style="margin-top:35px;padding-top:20px;border-top:1px solid #dcdcdc;
+                text-align:center;color:#666;font-size:13px;">
+                Sistema de Monitoramento Preventivo de Validades
+              </div>
+
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</div>
